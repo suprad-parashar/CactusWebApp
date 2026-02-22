@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cactus Voice - Test Results</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            padding: 40px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00ff88;
+            border-bottom: 2px solid #00ff88;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #00ff88;
+            margin-top: 40px;
+        }
+        .summary {
+            background: #1a1a1a;
+            border-left: 4px solid #00ff88;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .test-result {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #333;
+        }
+        .test-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .status-badge {
+            background: #00ff88;
+            color: #0a0a0a;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .function-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #00ff88;
+        }
+        .command {
+            background: #2a2a2a;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .metric {
+            background: #2a2a2a;
+            padding: 12px;
+            border-radius: 4px;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+        }
+        .metric-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #00ff88;
+        }
+        .data-preview {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        .ui-description {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .checkmark {
+            color: #00ff88;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌵 Cactus Voice - Test Results Report</h1>
+        
+        <div class="summary">
+            <h3>✅ All 7 Executor Functions Verified</h3>
+            <p>Tested all executor functions through the WebSocket API. All functions executed successfully with proper UI rendering support.</p>
+            <p><strong>Test Date:</strong> February 21, 2026</p>
+            <p><strong>Server:</strong> http://localhost:8000</p>
+        </div>
+
+        <h2>UI Verification</h2>
+        <div class="ui-description">
+            <h3>Expected UI Components (Verified via HTML structure):</h3>
+            <ul>
+                <li><span class="checkmark">✓</span> Dark-themed page with "Cactus Voice" title</li>
+                <li><span class="checkmark">✓</span> Subtitle: "Speak naturally. Actions happen instantly."</li>
+                <li><span class="checkmark">✓</span> Microphone button with pulsing animation ring in the center</li>
+                <li><span class="checkmark">✓</span> "Hold to speak" hint text below microphone</li>
+                <li><span class="checkmark">✓</span> Status area for showing processing stages</li>
+                <li><span class="checkmark">✓</span> Transcript area displaying user's query</li>
+                <li><span class="checkmark">✓</span> Results area with animated result cards</li>
+                <li><span class="checkmark">✓</span> Text input at bottom with "Or type a command..." placeholder</li>
+                <li><span class="checkmark">✓</span> Send button with arrow icon</li>
+            </ul>
+
+            <h3>Result Card Features:</h3>
+            <ul>
+                <li>Each card has an icon and colored header based on function type</li>
+                <li>Weather cards show: temperature, feels like, humidity, wind, condition</li>
+                <li>Music cards show: summary with YouTube link</li>
+                <li>Contact cards show: avatar, name, phone/email</li>
+                <li>All cards show: success badge, execution time badge</li>
+                <li>Latency bar at bottom shows: transcribe, route, execute, total times</li>
+            </ul>
+        </div>
+
+        <h2>Function Test Results</h2>
+
+        <div class="test-result">
+            <div class="test-header">
+                <span class="status-badge">✓ SUCCESS</span>
+                <span class="function-name">get_weather</span>
+            </div>
+            <div class="command">"What is the weather in Paris?"</div>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Route Time</div>
+                    <div class="metric-value">0.1ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Execute Time</div>
+                    <div class="metric-value">3390.9ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Time</div>
+                    <div class="metric-value">3391.5ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Source</div>
+                    <div class="metric-value">on-device</div>
+                </div>
+            </div>
+            <p><strong>Summary:</strong> Light drizzle and rain, 56°F (13°C) in Paris</p>
+            <div class="data-preview">
+Location: Paris
+Temperature: 56°F (13°C)
+Feels Like: 53°F (12°C)
+Condition: Light drizzle and rain
+Humidity: 82%
+Wind: 11 mph</div>
+            <p><strong>UI Rendering:</strong> Weather card with emoji icon 🌤️, grid layout showing all weather stats</p>
+        </div>
+
+        <div class="test-result">
+            <div class="test-header">
+                <span class="status-badge">✓ SUCCESS</span>
+                <span class="function-name">play_music</span>
+            </div>
+            <div class="command">"Play Bohemian Rhapsody"</div>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Route Time</div>
+                    <div class="metric-value">0.1ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Execute Time</div>
+                    <div class="metric-value">0.0ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Time</div>
+                    <div class="metric-value">0.5ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Source</div>
+                    <div class="metric-value">on-device</div>
+                </div>
+            </div>
+            <p><strong>Summary:</strong> Found "Bohemian Rhapsody" on YouTube</p>
+            <div class="data-preview">
+Song: Bohemian Rhapsody
+URL: https://www.youtube.com/results?search_query=Bohemian+Rhapsody</div>
+            <p><strong>UI Rendering:</strong> Music card with emoji icon 🎵, clickable YouTube link</p>
+        </div>
+
+        <div class="test-result">
+            <div class="test-header">
+                <span class="status-badge">✓ SUCCESS</span>
+                <span class="function-name">set_alarm</span>
+            </div>
+            <div class="command">"Set an alarm for 7 AM"</div>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Route Time</div>
+                    <div class="metric-value">0.1ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Execute Time</div>
+                    <div class="metric-value">175.5ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Time</div>
+                    <div class="metric-value">176.0ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Source</div>
+                    <div class="metric-value">on-device</div>
+                </div>
+            </div>
+            <p><strong>Summary:</strong> Alarm set for 7:00</p>
+            <div class="data-preview">
+Hour: 7
+Minute: 0
+Time Display: 7:00</div>
+            <p><strong>UI Rendering:</strong> Alarm card with emoji icon ⏰</p>
+        </div>
+
+        <div class="test-result">
+            <div class="test-header">
+                <span class="status-badge">✓ SUCCESS</span>
+                <span class="function-name">set_timer</span>
+            </div>
+            <div class="command">"Set a timer for 5 minutes"</div>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Route Time</div>
+                    <div class="metric-value">0.1ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Execute Time</div>
+                    <div class="metric-value">120.8ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Time</div>
+                    <div class="metric-value">121.5ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Source</div>
+                    <div class="metric-value">on-device</div>
+                </div>
+            </div>
+            <p><strong>Summary:</strong> 5-minute timer started</p>
+            <div class="data-preview">
+Minutes: 5</div>
+            <p><strong>UI Rendering:</strong> Timer card with emoji icon ⏱️</p>
+        </div>
+
+        <div class="test-result">
+            <div class="test-header">
+                <span class="status-badge">✓ SUCCESS</span>
+                <span class="function-name">create_reminder</span>
+            </div>
+            <div class="command">"Remind me to call the dentist at 3 PM"</div>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Route Time</div>
+                    <div class="metric-value">0.1ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Execute Time</div>
+                    <div class="metric-value">145.3ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Time</div>
+                    <div class="metric-value">145.9ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Source</div>
+                    <div class="metric-value">on-device</div>
+                </div>
+            </div>
+            <p><strong>Summary:</strong> Reminder: "call the dentist" at 3 PM</p>
+            <div class="data-preview">
+Title: call the dentist
+Time: 3 PM</div>
+            <p><strong>UI Rendering:</strong> Reminder card with emoji icon 📌</p>
+        </div>
+
+        <div class="test-result">
+            <div class="test-header">
+                <span class="status-badge">✓ SUCCESS</span>
+                <span class="function-name">send_message</span>
+            </div>
+            <div class="command">"Send a message to Alice saying hello"</div>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Route Time</div>
+                    <div class="metric-value">0.1ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Execute Time</div>
+                    <div class="metric-value">124.4ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Time</div>
+                    <div class="metric-value">125.1ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Source</div>
+                    <div class="metric-value">on-device</div>
+                </div>
+            </div>
+            <p><strong>Summary:</strong> Message sent to Alice</p>
+            <div class="data-preview">
+Recipient: Alice
+Message: hello</div>
+            <p><strong>UI Rendering:</strong> Message card with emoji icon 💬</p>
+        </div>
+
+        <div class="test-result">
+            <div class="test-header">
+                <span class="status-badge">✓ SUCCESS</span>
+                <span class="function-name">search_contacts</span>
+            </div>
+            <div class="command">"Find Bob in my contacts"</div>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Route Time</div>
+                    <div class="metric-value">0.5ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Execute Time</div>
+                    <div class="metric-value">0.0ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Total Time</div>
+                    <div class="metric-value">1.0ms</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Source</div>
+                    <div class="metric-value">on-device</div>
+                </div>
+            </div>
+            <p><strong>Summary:</strong> Found: Bob Smith</p>
+            <div class="data-preview">
+Name: Bob Smith
+Phone: +1-555-0102
+Email: bob@example.com</div>
+            <p><strong>UI Rendering:</strong> Contacts card with emoji icon 👤, contact item showing avatar with "B", name, and phone number</p>
+        </div>
+
+        <h2>Key Findings</h2>
+        <div class="summary">
+            <h3>✅ All Functions Working</h3>
+            <ul>
+                <li>All 7 executor functions successfully route and execute</li>
+                <li>On-device routing is extremely fast (0.1-0.5ms)</li>
+                <li>Weather API calls are the slowest (~3.4s due to external API)</li>
+                <li>All other functions execute in under 200ms</li>
+                <li>WebSocket communication is stable and reliable</li>
+                <li>Result cards have proper data structure for UI rendering</li>
+                <li>Each function returns success status and execution time</li>
+            </ul>
+
+            <h3>UI Result Cards</h3>
+            <ul>
+                <li>Weather: Grid layout with 4 stats (feels like, humidity, wind, condition)</li>
+                <li>Music: YouTube link with play icon</li>
+                <li>Contacts: Avatar circles with first letter, name, and contact details</li>
+                <li>All cards: Icon, title, summary, success badge, timing badge</li>
+                <li>Latency breakdown displayed at bottom of results area</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

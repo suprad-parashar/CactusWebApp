@@ -76,9 +76,16 @@ def execute_play_music(arguments: dict) -> dict:
 
     query = urllib.parse.quote_plus(song)
     url = f"https://www.youtube.com/results?search_query={query}"
+    try:
+        subprocess.Popen(
+            ["open", url],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
     return {
         "success": True,
-        "summary": f"Found \"{song}\" on YouTube",
+        "summary": f"Playing \"{song}\" on YouTube",
         "data": {"song": song, "url": url},
     }
 

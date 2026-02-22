@@ -35,7 +35,7 @@ sys.path.insert(0, str(HACKATHON_DIR))
 from cactus import cactus_init, cactus_transcribe, cactus_destroy, cactus_reset
 import main as _main_module
 _main_module.functiongemma_path = str(WEIGHTS_DIR / "functiongemma-270m-it")
-from main import generate_hybrid, _deterministic_parse, _coerce_args
+from main import generate_hybrid
 from executors import execute_function_call
 
 MAX_AUDIO_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -169,19 +169,11 @@ def transcribe_audio(audio_path: str) -> tuple[str, float]:
 
 
 def route_query(text: str) -> tuple[list, float, str]:
-    """Route a text query. Fast-paths deterministic matches to skip the cactus_complete ping."""
+    """Route a text query through the full hybrid algorithm."""
     start = time.time()
-
-    det_calls = _deterministic_parse(text, TOOLS)
-    if det_calls:
-        det_calls = _coerce_args(det_calls, TOOLS)
-        latency = (time.time() - start) * 1000
-        return det_calls, round(latency, 1), "on-device"
-
     messages = [{"role": "user", "content": text}]
     result = generate_hybrid(messages, TOOLS)
     latency = (time.time() - start) * 1000
-
     calls = result.get("function_calls", [])
     source = result.get("source", "unknown")
     return calls, round(latency, 1), source
