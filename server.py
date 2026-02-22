@@ -10,10 +10,12 @@ FastAPI backend that:
 5. Returns results with full latency breakdown
 """
 
+import asyncio
+import atexit
+import concurrent.futures
 import json
 import os
 import sys
-import struct
 import tempfile
 import time
 from pathlib import Path
@@ -35,6 +37,8 @@ import main as _main_module
 _main_module.functiongemma_path = str(WEIGHTS_DIR / "functiongemma-270m-it")
 from main import generate_hybrid, _deterministic_parse, _coerce_args
 from executors import execute_function_call
+
+MAX_AUDIO_BYTES = 10 * 1024 * 1024  # 10 MB
 
 TOOLS = [
     {
@@ -119,8 +123,9 @@ TOOLS = [
     },
 ]
 
-
 _whisper_model = None
+_executor_pool = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+
 
 def get_whisper():
     global _whisper_model
@@ -130,6 +135,18 @@ def get_whisper():
         _whisper_model = cactus_init(whisper_path)
         print("[init] Whisper model loaded.")
     return _whisper_model
+
+
+@atexit.register
+def _cleanup_whisper():
+    global _whisper_model
+    if _whisper_model is not None:
+        try:
+            cactus_destroy(_whisper_model)
+        except Exception:
+            pass
+        _whisper_model = None
+    _executor_pool.shutdown(wait=False)
 
 
 def transcribe_audio(audio_path: str) -> tuple[str, float]:
@@ -171,25 +188,35 @@ def route_query(text: str) -> tuple[list, float, str]:
 
 
 def execute_calls(function_calls: list) -> tuple[list, float]:
-    """Execute all function calls. Returns (results, latency_ms)."""
+    """Execute all function calls concurrently. Returns (results, latency_ms)."""
     start = time.time()
-    results = []
-    for call in function_calls:
-        name = call.get("name", "")
-        args = call.get("arguments", {})
-        result = execute_function_call(name, args)
-        results.append(result)
+
+    if len(function_calls) == 1:
+        c = function_calls[0]
+        results = [execute_function_call(c.get("name", ""), c.get("arguments", {}))]
+    else:
+        futures = [
+            _executor_pool.submit(execute_function_call, c.get("name", ""), c.get("arguments", {}))
+            for c in function_calls
+        ]
+        results = [f.result(timeout=15) for f in futures]
+
     latency = (time.time() - start) * 1000
     return results, round(latency, 1)
 
 
-def webm_to_wav(input_path: str, output_path: str):
-    """Convert WebM/Opus audio to 16kHz mono WAV using ffmpeg."""
+def convert_audio(input_path: str, output_path: str):
+    """Convert browser audio to 16kHz mono WAV using ffmpeg. Raises on failure."""
     import subprocess
-    subprocess.run(
+    proc = subprocess.run(
         ["ffmpeg", "-y", "-i", input_path, "-ar", "16000", "-ac", "1", "-f", "wav", output_path],
         capture_output=True, timeout=10,
     )
+    if proc.returncode != 0:
+        stderr = proc.stderr.decode(errors="replace")[:200]
+        raise RuntimeError(f"ffmpeg failed (code {proc.returncode}): {stderr}")
+    if not os.path.exists(output_path) or os.path.getsize(output_path) < 100:
+        raise RuntimeError("ffmpeg produced empty output")
 
 
 app = FastAPI()
@@ -221,6 +248,9 @@ async def websocket_endpoint(ws: WebSocket):
 
             if "bytes" in data:
                 audio_bytes = data["bytes"]
+                if len(audio_bytes) > MAX_AUDIO_BYTES:
+                    await ws.send_json({"type": "error", "message": "Audio too large (10MB limit)"})
+                    continue
                 await handle_audio(ws, audio_bytes)
 
     except WebSocketDisconnect:
@@ -238,24 +268,29 @@ async def handle_audio(ws: WebSocket, audio_bytes: bytes):
 
     await ws.send_json({"type": "status", "stage": "transcribing", "message": "Transcribing audio..."})
 
-    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as webm_f:
-        webm_f.write(audio_bytes)
-        webm_path = webm_f.name
+    with tempfile.NamedTemporaryFile(suffix=".audio", delete=False) as tmp:
+        tmp.write(audio_bytes)
+        audio_path = tmp.name
 
-    wav_path = webm_path.replace(".webm", ".wav")
+    wav_path = audio_path + ".wav"
     try:
-        webm_to_wav(webm_path, wav_path)
+        await asyncio.to_thread(convert_audio, audio_path, wav_path)
     except Exception as e:
         await ws.send_json({"type": "error", "message": f"Audio conversion failed: {e}"})
         return
     finally:
-        os.unlink(webm_path)
+        try:
+            os.unlink(audio_path)
+        except OSError:
+            pass
 
     try:
-        text, transcribe_ms = transcribe_audio(wav_path)
+        text, transcribe_ms = await asyncio.to_thread(transcribe_audio, wav_path)
     finally:
-        if os.path.exists(wav_path):
+        try:
             os.unlink(wav_path)
+        except OSError:
+            pass
 
     if not text:
         await ws.send_json({"type": "error", "message": "Could not transcribe audio"})
@@ -281,7 +316,7 @@ async def _route_and_execute(ws: WebSocket, text: str, pipeline_start: float, tr
     """Shared routing + execution pipeline."""
     await ws.send_json({"type": "status", "stage": "routing", "message": "Routing query..."})
 
-    function_calls, route_ms, source = route_query(text)
+    function_calls, route_ms, source = await asyncio.to_thread(route_query, text)
 
     if not function_calls:
         await ws.send_json({
@@ -301,7 +336,7 @@ async def _route_and_execute(ws: WebSocket, text: str, pipeline_start: float, tr
 
     await ws.send_json({"type": "status", "stage": "executing", "message": "Executing actions..."})
 
-    executions, execute_ms = execute_calls(function_calls)
+    executions, execute_ms = await asyncio.to_thread(execute_calls, function_calls)
 
     total_ms = round((time.time() - pipeline_start) * 1000, 1)
 

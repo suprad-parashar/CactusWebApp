@@ -11,11 +11,17 @@ import urllib.request
 import urllib.parse
 
 
+def _escape_applescript(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def _notify_macos(title: str, message: str, sound: str = "default"):
     """Send a macOS notification via osascript."""
+    safe_title = _escape_applescript(title)
+    safe_msg = _escape_applescript(message)
     script = (
-        f'display notification "{message}" '
-        f'with title "{title}" '
+        f'display notification "{safe_msg}" '
+        f'with title "{safe_title}" '
         f'sound name "{sound}"'
     )
     try:

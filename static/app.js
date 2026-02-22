@@ -15,12 +15,29 @@
   let mediaRecorder = null;
   let audioChunks = [];
   let isRecording = false;
-  let audioCtx = null;
-  let analyser = null;
-  let silenceTimer = null;
+  let micBusy = false;
+  let silenceRaf = null;
+
   const SILENCE_THRESHOLD = 0.01;
   const SILENCE_DURATION = 1500;
   const MIN_RECORD_MS = 600;
+
+  const PREFERRED_MIME = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+    ? "audio/webm;codecs=opus"
+    : MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "audio/mp4";
+
+  let sharedAudioCtx = null;
+  function getAudioContext() {
+    if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+      sharedAudioCtx = new AudioContext();
+    }
+    if (sharedAudioCtx.state === "suspended") {
+      sharedAudioCtx.resume();
+    }
+    return sharedAudioCtx;
+  }
 
   // ── WebSocket ───────────────────────────────────────────
 
@@ -75,12 +92,12 @@
   }
 
   function showError(message) {
-    resultsArea.innerHTML = `<div class="no-result">${message}</div>`;
+    resultsArea.innerHTML = `<div class="no-result">${escapeHtml(message)}</div>`;
   }
 
   // ── Transcript ──────────────────────────────────────────
 
-  function showTranscript(text, latencyMs) {
+  function showTranscript(text) {
     transcriptArea.innerHTML = `
       <p class="transcript-text">
         <span class="quote">&ldquo;</span>${escapeHtml(text)}<span class="quote">&rdquo;</span>
@@ -90,13 +107,13 @@
   // ── Results ─────────────────────────────────────────────
 
   const CARD_CONFIG = {
-    get_weather:      { icon: "🌤", label: "Weather",  cls: "weather" },
-    play_music:       { icon: "🎵", label: "Music",    cls: "music" },
-    set_alarm:        { icon: "⏰", label: "Alarm",    cls: "alarm" },
-    set_timer:        { icon: "⏱",  label: "Timer",    cls: "timer" },
-    create_reminder:  { icon: "📌", label: "Reminder", cls: "reminder" },
-    send_message:     { icon: "💬", label: "Message",  cls: "message" },
-    search_contacts:  { icon: "👤", label: "Contacts", cls: "contacts" },
+    get_weather:      { icon: "\u{1F324}", label: "Weather",  cls: "weather" },
+    play_music:       { icon: "\u{1F3B5}", label: "Music",    cls: "music" },
+    set_alarm:        { icon: "\u23F0",     label: "Alarm",    cls: "alarm" },
+    set_timer:        { icon: "\u23F1",     label: "Timer",    cls: "timer" },
+    create_reminder:  { icon: "\u{1F4CC}", label: "Reminder", cls: "reminder" },
+    send_message:     { icon: "\u{1F4AC}", label: "Message",  cls: "message" },
+    search_contacts:  { icon: "\u{1F464}", label: "Contacts", cls: "contacts" },
   };
 
   function renderResults(msg) {
@@ -113,7 +130,7 @@
       card.className = "result-card";
       card.style.animationDelay = `${i * 80}ms`;
 
-      const config = CARD_CONFIG[exec.function_name] || { icon: "⚡", label: exec.function_name, cls: "unknown" };
+      const config = CARD_CONFIG[exec.function_name] || { icon: "\u26A1", label: exec.function_name, cls: "unknown" };
 
       card.innerHTML = `
         <div class="card-header">
@@ -163,13 +180,13 @@
       case "play_music":
         return `
           <p class="card-summary">${escapeHtml(exec.summary)}</p>
-          ${data.url ? `<a href="${data.url}" target="_blank" class="music-link">&#9654; Open YouTube</a>` : ""}`;
+          ${data.url ? `<a href="${escapeHtml(data.url)}" target="_blank" rel="noopener" class="music-link">&#9654; Open YouTube</a>` : ""}`;
 
-      case "search_contacts":
+      case "search_contacts": {
         if (data.results && data.results.length > 0) {
           const contacts = data.results.map((c) => `
             <div class="contact-item">
-              <div class="contact-avatar">${(c.name || "?")[0]}</div>
+              <div class="contact-avatar">${escapeHtml((c.name || "?")[0])}</div>
               <div class="contact-info">
                 <span class="contact-name">${escapeHtml(c.name)}</span>
                 <span class="contact-detail">${escapeHtml(c.phone || c.email || "")}</span>
@@ -178,6 +195,7 @@
           return `<p class="card-summary">${escapeHtml(exec.summary)}</p><div class="contact-list">${contacts}</div>`;
         }
         return `<p class="card-summary">${escapeHtml(exec.summary)}</p>`;
+      }
 
       default:
         return `<p class="card-summary">${escapeHtml(exec.summary)}</p>`;
@@ -204,16 +222,19 @@
   // ── Mic Recording ───────────────────────────────────────
 
   async function toggleRecording() {
-    if (isRecording) {
-      stopRecording();
-      return;
-    }
+    if (micBusy) return;
+    micBusy = true;
     try {
+      if (isRecording) {
+        stopRecording();
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunks = [];
       const recordStart = Date.now();
 
-      mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+      mediaRecorder = new MediaRecorder(stream, { mimeType: PREFERRED_MIME });
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunks.push(e.data);
@@ -222,7 +243,7 @@
       mediaRecorder.onstop = () => {
         stopSilenceDetection();
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        const blob = new Blob(audioChunks, { type: PREFERRED_MIME });
         if (Date.now() - recordStart > MIN_RECORD_MS) {
           sendAudio(blob);
         }
@@ -242,25 +263,27 @@
     } catch (err) {
       console.error("Mic error:", err);
       showError("Microphone access denied. Please allow mic permissions.");
+    } finally {
+      micBusy = false;
     }
   }
 
   function startSilenceDetection(stream, recordStart) {
-    audioCtx = new AudioContext();
-    analyser = audioCtx.createAnalyser();
+    const ctx = getAudioContext();
+    const analyser = ctx.createAnalyser();
     analyser.fftSize = 512;
-    const source = audioCtx.createMediaStreamSource(stream);
+    const source = ctx.createMediaStreamSource(stream);
     source.connect(analyser);
 
-    const data = new Float32Array(analyser.fftSize);
+    const buf = new Float32Array(analyser.fftSize);
     let silentSince = null;
 
     function check() {
       if (!isRecording) return;
-      analyser.getFloatTimeDomainData(data);
+      analyser.getFloatTimeDomainData(buf);
       let rms = 0;
-      for (let i = 0; i < data.length; i++) rms += data[i] * data[i];
-      rms = Math.sqrt(rms / data.length);
+      for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+      rms = Math.sqrt(rms / buf.length);
 
       if (rms < SILENCE_THRESHOLD) {
         if (!silentSince) silentSince = Date.now();
@@ -271,14 +294,13 @@
       } else {
         silentSince = null;
       }
-      silenceTimer = requestAnimationFrame(check);
+      silenceRaf = requestAnimationFrame(check);
     }
     check();
   }
 
   function stopSilenceDetection() {
-    if (silenceTimer) { cancelAnimationFrame(silenceTimer); silenceTimer = null; }
-    if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
+    if (silenceRaf) { cancelAnimationFrame(silenceRaf); silenceRaf = null; }
   }
 
   function stopRecording() {
